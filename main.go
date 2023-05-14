@@ -28,8 +28,12 @@ func main() {
 		logrus.SetLevel(logrus.TraceLevel)
 	}
 
-	if err := plugin.Exec(args); err != nil {
+	msg, err := plugin.Exec(&args)
+
+	if err != nil {
 		logrus.Fatalln(err)
+	} else {
+		logrus.Println(msg)
 	}
 }
 

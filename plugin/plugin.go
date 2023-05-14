@@ -7,7 +7,6 @@ package plugin
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -19,20 +18,20 @@ type Args struct {
 	Level string `envconfig:"PLUGIN_LOG_LEVEL"`
 
 	// TODO replace or remove
-	BaseURL     string   `envconfig:"PLUGIN_URL" envDefault:"https://ntfy.sh"`
-	Topic       string   `envconfig:"PLUGIN_TOPIC"`
-	Username    string   `envconfig:"PLUGIN_USERNAME"`
-	Password    string   `envconfig:"PLUGIN_PASSWORD"`
-	Token       string   `envconfig:"PLUGIN_TOKEN"`
-	Title       string   `envconfig:"PLUGIN_TITLE"`
-	Priority    string   `envconfig:"PLUGIN_PRIORITY" envDefault:"default"`
-	Tags        []string `envconfig:"PLUGIN_TAGS" envSeparator:","`
-	DefaultTags []string `envconfig:"PLUGIN_DEFAULT_TAGS" envDefault:"drone"`
-	Message     string   `envconfig:"PLUGIN_MESSAGE"`
+	BaseURL  string   `envconfig:"PLUGIN_URL" envDefault:"https://ntfy.sh"`
+	Topic    string   `envconfig:"PLUGIN_TOPIC", required:"true"`
+	Username string   `envconfig:"PLUGIN_USERNAME"`
+	Password string   `envconfig:"PLUGIN_PASSWORD"`
+	Token    string   `envconfig:"PLUGIN_TOKEN"`
+	Title    string   `envconfig:"PLUGIN_TITLE"`
+	Priority string   `envconfig:"PLUGIN_PRIORITY" default:"default"`
+	Tags     []string `envconfig:"PLUGIN_TAGS" envSeparator:","`
+	//DefaultTags []string `envconfig:"PLUGIN_DEFAULT_TAGS" default:"drone"`
+	Message string `envconfig:"PLUGIN_MESSAGE"`
 }
 
-func buildAppMessage(args Args) {
-	args.Title = "Build #" + strconv.Itoa(args.Build.Number) + " " + args.Build.Status
+func buildAppMessage(args *Args) {
+	args.Title = fmt.Sprintf("Build #%d %s", args.Build.Number, args.Build.Status)
 
 	if strings.Contains(args.Commit.Ref, "refs/tags/") {
 		args.Tags = append(args.Tags, args.Tag.Name)
@@ -43,7 +42,7 @@ func buildAppMessage(args Args) {
 	}
 }
 
-func addResultToTags(args Args) {
+func addResultToTags(args *Args) {
 	if args.Build.Status == "success" {
 		args.Tags = append(args.Tags, "white_check_mark")
 	} else if args.Build.Status == "failure" {
@@ -53,7 +52,7 @@ func addResultToTags(args Args) {
 	}
 }
 
-func getActions(args Args) string {
+func getActions(args *Args) string {
 	var buildLink = "view, Build, " + args.Build.Link
 
 	if strings.Contains(args.Commit.Ref, "refs/tags/") {
@@ -82,7 +81,10 @@ func formatRequest(r *http.Request) string {
 
 	// If this is a POST, add post data
 	if r.Method == "POST" {
-		r.ParseForm()
+		err := r.ParseForm()
+		if err != nil {
+			return ""
+		}
 		request = append(request, "\n")
 		request = append(request, r.Form.Encode())
 	}
@@ -91,11 +93,11 @@ func formatRequest(r *http.Request) string {
 }
 
 // Exec executes the plugin.
-func Exec(args Args) error {
+func Exec(args *Args) (string, error) {
 	buildAppMessage(args)
 	addResultToTags(args)
 
-	args.Tags = append(args.DefaultTags, args.Tags...)
+	//args.Tags = append(args.DefaultTags, args.Tags...)
 
 	req, _ := http.NewRequest("POST",
 		args.BaseURL+"/"+args.Topic,
@@ -112,17 +114,17 @@ func Exec(args Args) error {
 	req.Header.Set("Tags", strings.Join(args.Tags, ","))
 	req.Header.Set("Actions", getActions(args))
 
-	fmt.Printf("%+v", req)
+	//fmt.Printf("--> %s\n\n", formatRequest(req))
 
 	res, err := http.DefaultClient.Do(req)
 
 	if err != nil {
-		return fmt.Errorf("error trying to notify the result. Error: %+v", err)
+		return "", fmt.Errorf("error trying to notify the result. Error: %+v", err)
 	}
 
 	if res.StatusCode != 200 {
-		return fmt.Errorf("error from server. HTTP status: %d. Error: %e", res.StatusCode, err)
+		return "", fmt.Errorf("error from server. HTTP status: %d. Error: %e", res.StatusCode, err)
 	}
 
-	return nil
+	return "[SUCCESS] Notification sent", nil
 }
