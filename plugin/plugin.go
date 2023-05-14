@@ -19,7 +19,7 @@ type Args struct {
 
 	// TODO replace or remove
 	BaseURL  string   `envconfig:"PLUGIN_URL" envDefault:"https://ntfy.sh"`
-	Topic    string   `envconfig:"PLUGIN_TOPIC", required:"true"`
+	Topic    string   `envconfig:"PLUGIN_TOPIC" required:"true"`
 	Username string   `envconfig:"PLUGIN_USERNAME"`
 	Password string   `envconfig:"PLUGIN_PASSWORD"`
 	Token    string   `envconfig:"PLUGIN_TOKEN"`
