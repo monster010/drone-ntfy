@@ -2,11 +2,6 @@ A drone plugin to send build status messages to your selected ntfy server.
 
 # Usage
 
-The following settings changes this plugin's behavior.
-
-* param1 (optional) does something.
-* param2 (optional) does something different.
-
 Below is an example `.drone.yml` that uses this plugin.
 
 ```yaml
@@ -14,41 +9,53 @@ kind: pipeline
 name: default
 
 steps:
-- name: run monster010/drone-ntfy
- plugin
+- name: ntfy notification
   image: monster010/drone-ntfy
   pull: if-not-exists
+  when:
+    status: [success, failure]
   settings:
-    param1: foo
-    param2: bar
+    url: https://ntfy.example.org
+    topic: events
+    priority: high
+    tags:
+      - pipeline-status
+      - dev
+    token:
+      from_secret: ntfy_token
 ```
 
-# Building
+## Properties
 
-Build the plugin binary:
+`url` *string* [optional] \
+Ntfy server.
+> *Default: https://ntfy.sh*
 
-```text
-scripts/build.sh
-```
+`topic` *string* [**REQUIRED**] \
+Topic to publish message.
+> *Default: none*
 
-Build the plugin image:
+`priority` *string* [optional] \
+Priority of the notification. Values can be [min, low, default, high, max].
+> *Default: default*
 
-```text
-docker build -t monster010/drone-ntfy
- -f docker/Dockerfile .
-```
+`tags` *string* [optional] \
+Custom tags to include.
+> *Default: none*
 
-# Testing
+`username` *string* [optional] \
+Username with publish permissions.
+> *Default: none*
 
-Execute the plugin from your current working directory:
+`password` *string* [optional] \
+[***SECRET RECOMMENDED***] \
+Password for username.
 
-```text
-docker run --rm -e PLUGIN_PARAM1=foo -e PLUGIN_PARAM2=bar \
-  -e DRONE_COMMIT_SHA=8f51ad7884c5eb69c11d260a31da7a745e6b78e2 \
-  -e DRONE_COMMIT_BRANCH=master \
-  -e DRONE_BUILD_NUMBER=43 \
-  -e DRONE_BUILD_STATUS=success \
-  -w /drone/src \
-  -v $(pwd):/drone/src \
-  monster010/drone-ntfy
-```
+> *Default: none*
+
+`token` *string* [optional] \
+[***SECRET RECOMMENDED***] \
+Token to use, instead username and password.
+
+> *Default: none*
+
